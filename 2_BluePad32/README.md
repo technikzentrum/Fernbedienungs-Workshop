@@ -1,5 +1,3 @@
-Hier ist eine vereinfachte und auf Deutsch übersetzte Version der Bluepad32-Bibliothek und anschließend eine detaillierte Anleitung zur Installation und Einrichtung:
-
 ### Was ist Bluepad32?
 Bluepad32 ist eine Bibliothek, die es ermöglicht, verschiedene Bluetooth-Steuergeräte wie Gamepads, Mäuse und Tastaturen einfach in deine Projekte zu integrieren. Sie funktioniert mit Plattformen wie ESP32, ESP32-S3, ESP32-C3, Raspberry Pi Pico W und POSIX-Systemen (Linux, macOS). Mit Bluepad32 kannst du beispielsweise einen Roboter mit einem DualSense-Controller steuern.
 
@@ -36,8 +34,8 @@ Hier ist eine Grafik, die eine Vielzahl von unterstützten Controllern zeigt, da
    - Klicke nach dem Erstellen des Projekts auf „Upload and Monitor“.
    - Das Programm wird auf dein Gerät hochgeladen und der Monitor-Modus gestartet. Hier kannst du die Konsolenausgabe sehen und beispielsweise `help` eingeben, um verfügbare Befehle zu sehen.
 
-     ![Überwachen des Projekts](https://lh3.googleusercontent.com/pw/ABLVV845uPqRtJkUrv
-
-4JlODuTr7Shnw0HR7BdojRbxv3xWyiUO-V_Kv42YAKAV-XyoNRPY5vsyj0yRDsRxH0mxz8Q1NYzvhCKw5Ni9MH6UYR8IiaT8XS9hysR81APn8X2tnVgnmJ6ZkSPCgUURnE2MVYIWYrNQ=-no-gm?authuser=0)
+     ![Überwachen des Projekts](https://lh3.googleusercontent.com/pw/ABLVV845uPqRtJkUrv4JlODuTr7Shnw0HR7BdojRbxv3xWyiUO-V_Kv42YAKAV-XyoNRPY5vsyj0yRDsRxH0mxz8Q1NYzvhCKw5Ni9MH6UYR8IiaT8XS9hysR81APn8X2tnVgnmJ6ZkSPCgUURnE2MVYIWYrNQ=-no-gm?authuser=0)
 
 Diese Schritte führen dich durch den Prozess der Einrichtung eines Projekts mit Bluepad32 unter Verwendung von PlatformIO und ESP-IDF. Weitere Informationen und spezifische Anleitungen findest du in der [offiziellen Dokumentation](https://github.com/ricardoquesada/esp-idf-arduino-bluepad32-template).
+
+Jetzt können wir den ersten Controller verbinden.
