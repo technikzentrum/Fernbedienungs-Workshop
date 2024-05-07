@@ -3,54 +3,59 @@ Um den Roboter mithilfe eines Controllers zu steuern müssen wir den Code so auf
 ```cpp
 #include <Arduino.h>
 #include <Bluepad32.h>
-#include "uni_bt_allowlist.h"
+#include <uni.h>
+
 
 // Definiere hier die MAC-Adressen der erlaubten Controller
-const char* allowedAddresses[] = {"00:11:22:33:44:55", "AA:BB:CC:DD:EE:FF"};
+const char* allowedAddresses[] = {"98:B6:E9:01:6C:47", "AA:BB:CC:DD:EE:FF"};
 const int numAllowed = sizeof(allowedAddresses) / sizeof(allowedAddresses[0]);
+ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
-// Initialisiere Bluepad32
-BP32Class BP32;
 
-void setup() {
-    Serial.begin(115200);
-    BP32.begin();
-
-    // Füge die erlaubten MAC-Adressen zur Allowlist hinzu
-    for (int i = 0; i < numAllowed; ++i) {
-        bd_addr_t addr;
-        sscanf_bd_addr(allowedAddresses[i], addr);
-        uni_bt_allowlist_add_addr(addr);
+void onConnectedController(ControllerPtr ctl) {
+    bool foundEmptySlot = false;
+    for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
+        if (myControllers[i] == nullptr) {
+            Console.printf("CALLBACK: Controller is connected, index=%d\n", i);
+            // Additionally, you can get certain gamepad properties like:
+            // Model, VID, PID, BTAddr, flags, etc.
+            ControllerProperties properties = ctl->getProperties();
+            Console.printf("Controller model: %s, VID=0x%04x, PID=0x%04x\n", ctl->getModelName(), properties.vendor_id,
+                           properties.product_id);
+            myControllers[i] = ctl;
+            foundEmptySlot = true;
+            break;
+        }
     }
-
-    // Aktiviere die Whitelist-Überprüfung
-    uni_bt_allowlist_set_enabled(true);
-
-    // Richte die Callbacks ein
-    BP32.setup(onConnectedController, onDisconnectedController);
+    if (!foundEmptySlot) {
+        Console.println("CALLBACK: Controller connected, but could not found empty slot");
+    }
 }
 
-void loop() {
-    // Aktualisiere die Controller-Daten
-    if (BP32.update()) {
-        // Verarbeite die Daten jedes verbundenen Controllers
-        for (auto controller : BP32.controllers()) {
-            if (controller && controller->isConnected() && controller->isGamepad()) {
-                // Verarbeite Controller
-                processGamepad(controller);
-            }
+
+void onDisconnectedController(ControllerPtr ctl) {
+    bool foundController = false;
+
+    for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
+        if (myControllers[i] == ctl) {
+            Console.printf("CALLBACK: Controller disconnected from index=%d\n", i);
+            myControllers[i] = nullptr;
+            foundController = true;
+            break;
         }
     }
 
-    delay(10);  // Kurze Pause zur Schonung der CPU
+    if (!foundController) {
+        Console.println("CALLBACK: Controller disconnected, but not found in myControllers");
+    }
 }
 
-void onConnectedController(ControllerPtr ctl) {
-    Serial.println("Controller verbunden");
-}
 
-void onDisconnectedController(ControllerPtr ctl) {
-    Serial.println("Controller getrennt");
+void setSpeed(int leftPWM, int rightPWM) {
+    // Hier würde normalerweise der Code stehen, um die Motoren des Roboters anzusteuern
+    // Beispiel:
+    //analogWrite(LEFT_MOTOR_PIN, leftPWM);
+    //analogWrite(RIGHT_MOTOR_PIN, rightPWM);
 }
 
 void processGamepad(ControllerPtr ctl) {
@@ -72,11 +77,37 @@ void processGamepad(ControllerPtr ctl) {
     Serial.println(rightPWM);
 }
 
-void setSpeed(int leftPWM, int rightPWM) {
-    // Hier würde normalerweise der Code stehen, um die Motoren des Roboters anzusteuern
-    // Beispiel:
-    analogWrite(LEFT_MOTOR_PIN, leftPWM);
-    analogWrite(RIGHT_MOTOR_PIN, rightPWM);
+void setup() {
+    Serial.begin(115200);
+    uni_bt_allowlist_init();
+
+    // Füge die erlaubten MAC-Adressen zur Allowlist hinzu
+    for (int i = 0; i < numAllowed; ++i) {
+        bd_addr_t addr;
+        sscanf_bd_addr(allowedAddresses[i], addr);
+        uni_bt_allowlist_add_addr(addr);
+    }
+
+    // Aktiviere die Whitelist-Überprüfung
+    uni_bt_allowlist_set_enabled(true);
+
+    // Richte die Callbacks ein
+    BP32.setup(onConnectedController, onDisconnectedController);
+}
+
+void loop() {
+    // Aktualisiere die Controller-Daten
+    if (BP32.update()) {
+        // Verarbeite die Daten jedes verbundenen Controllers
+        for (auto controller : myControllers) {
+            if (controller && controller->isConnected() && controller->isGamepad()) {
+                // Verarbeite Controller
+                processGamepad(controller);
+            }
+        }
+    }
+
+    delay(10);  // Kurze Pause zur Schonung der CPU
 }
 
 ```
