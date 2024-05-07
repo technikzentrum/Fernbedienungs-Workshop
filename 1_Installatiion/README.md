@@ -38,7 +38,7 @@
    - Ersetze den Inhalt durch das Blink-Beispiel oder ein ähnliches einfaches Programm.
    - Kompiliere dein Projekt mit der Tastenkombination `Strg+Alt+B` oder klicke auf den „Build“-Button :heavy_check_mark: in der PlatformIO-Toolbar.
 
-   ![Blink Beispiel](https://docs.platformio.org/en/stable/_images/platformio-ide-vscode-blink-project.png)
+   ![Blink Beispiel](https://docs.platformio.org/en/stable/_images/platformio-ide-vscode-build-project.png)
 
 **6. Weiterführende Informationen(OPTIONAL)**
    - Für eine detailliertere Einführung in die Nutzung von PlatformIO empfehlen wir die [Tutorials und Beispiele](https://docs.platformio.org/en/stable/tutorials/index.html#tutorials) auf der offiziellen Website.
