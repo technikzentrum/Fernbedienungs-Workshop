@@ -27,7 +27,7 @@
    - [Download](https://git-scm.com/download/win)
 
 **4. Erstes Projekt erstellen**
-   - Klicke in VS Code unten in der PlatformIO-Toolbar auf „PlatformIO Home“. (:house:)
+   - Klicke in VS Code unten in der PlatformIO-Toolbar auf „PlatformIO Home“. :house:
    - Wähle „New Project“.
    - Gib die notwendigen Informationen ein, wähle das Board "WEMOS D1 MINI ESP32" und bestätige mit „Finish“.
 
@@ -36,7 +36,7 @@
 **5. Erstes Beispielprogramm**
    - Öffne die `main.cpp` Datei im `src` Ordner des neu erstellten Projekts.
    - Ersetze den Inhalt durch das Blink-Beispiel oder ein ähnliches einfaches Programm.
-   - Kompiliere dein Projekt mit der Tastenkombination `Strg+Alt+B` oder klicke auf den „Build“-Button in der PlatformIO-Toolbar.
+   - Kompiliere dein Projekt mit der Tastenkombination `Strg+Alt+B` oder klicke auf den „Build“-Button :heavy_check_mark: in der PlatformIO-Toolbar.
 
    ![Blink Beispiel](https://docs.platformio.org/en/stable/_images/platformio-ide-vscode-blink-project.png)
 
