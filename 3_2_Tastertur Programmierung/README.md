@@ -16,16 +16,54 @@ const char* allowedAddresses[] = {"98:B6:E9:01:6C:47", "AA:BB:CC:DD:EE:FF"};
 const int numAllowed = sizeof(allowedAddresses) / sizeof(allowedAddresses[0]);
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
-// Timing für Smoothing
-unsigned long keyPressTime[256];  // Speichert die Zeit, zu der jede Taste gedrückt wurde
+
+int oldLeftSpeed = 0, oldRightSpeed = 0; // Alte Geschwindigkeiten für Glättung
+
+
+
+#define NUM_KEYS 256
+bool keyState[NUM_KEYS] = {false}; // Speichert den Zustand aller Tasten
+unsigned long keyPressTime[NUM_KEYS] = {0}; // Speichert die Zeit, zu der jede Taste gedrückt wurde
+
 
 void onConnectedController(ControllerPtr ctl) {
-    Serial.println("Gerät verbunden");
+    bool foundEmptySlot = false;
+    for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
+        if (myControllers[i] == nullptr) {
+            Console.printf("CALLBACK: Controller is connected, index=%d\n", i);
+            // Additionally, you can get certain gamepad properties like:
+            // Model, VID, PID, BTAddr, flags, etc.
+            ControllerProperties properties = ctl->getProperties();
+            Console.printf("Controller model: %s, VID=0x%04x, PID=0x%04x\n", ctl->getModelName(), properties.vendor_id,
+                           properties.product_id);
+            myControllers[i] = ctl;
+            foundEmptySlot = true;
+            break;
+        }
+    }
+    if (!foundEmptySlot) {
+        Console.println("CALLBACK: Controller connected, but could not found empty slot");
+    }
 }
 
+
 void onDisconnectedController(ControllerPtr ctl) {
-    Serial.println("Gerät getrennt");
+    bool foundController = false;
+
+    for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
+        if (myControllers[i] == ctl) {
+            Console.printf("CALLBACK: Controller disconnected from index=%d\n", i);
+            myControllers[i] = nullptr;
+            foundController = true;
+            break;
+        }
+    }
+
+    if (!foundController) {
+        Console.println("CALLBACK: Controller disconnected, but not found in myControllers");
+    }
 }
+
 
 void setSpeed(int leftPWM, int rightPWM) {
     // Hier würde normalerweise der Code stehen, um die Motoren des Roboters anzusteuern
@@ -34,66 +72,85 @@ void setSpeed(int leftPWM, int rightPWM) {
     //analogWrite(RIGHT_MOTOR_PIN, rightPWM);
 }
 
-unsigned long updateKeyPressDuration(int key) {
-    if (keyPressTime[key] == 0) {
-        // Taste wurde gerade gedrückt
-        keyPressTime[key] = millis();
-        return 0;
+void updateKeyPressDuration(int key, bool isPressed) {
+    if (isPressed) {
+        if (keyPressTime[key] == 0) { // Taste wurde gerade gedrückt
+            keyPressTime[key] = millis();
+        }
     } else {
-        // Taste ist gedrückt, berechne wie lange
+        keyPressTime[key] = 0; // Taste wurde losgelassen
+    }
+    keyState[key] = isPressed;
+}
+
+unsigned long getKeyDuration(int key) {
+    if (keyState[key] && keyPressTime[key] > 0) {
         return millis() - keyPressTime[key];
     }
+    return 0;
 }
 
-void clearKeyPressDuration(int key) {
-    keyPressTime[key] = 0;
-}
+void processKeyboard() {
+    int pwmLeft = 0, pwmRight = 0;
 
-void processKeyboard(ControllerPtr ctl) {
-    int pwmLeft = 0;
-    int pwmRight = 0;
-
-    // W-Taste für Vorwärts
-    if (ctl->isKeyPressed(Keyboard_W)) {
-        unsigned long duration = updateKeyPressDuration(Keyboard_W);
-        int speed = map(min(duration, (unsigned long)1000), 0, 1000, 0, 255);
+    // Verarbeitung jeder Taste
+    if (keyState[Keyboard_W]) {
+        int speed = map(min(getKeyDuration(Keyboard_W), 500UL), 0, 500, 0, 255);
         pwmLeft += speed;
         pwmRight += speed;
     }
-
-    // S-Taste für Rückwärts
-    if (ctl->isKeyPressed(Keyboard_S)) {
-        unsigned long duration = updateKeyPressDuration(Keyboard_S);
-        int speed = map(min(duration, (unsigned long)1000), 0, 1000, 0, 255);
+    if (keyState[Keyboard_S]) {
+        int speed = map(min(getKeyDuration(Keyboard_S), 500UL), 0, 500, 0, 255);
         pwmLeft -= speed;
         pwmRight -= speed;
     }
-
-    // A-Taste für Links
-    if (ctl->isKeyPressed(Keyboard_A)) {
-        unsigned long duration = updateKeyPressDuration(Keyboard_A);
-        int turn = map(min(duration, (unsigned long)1000), 0, 1000, 0, 255);
+    if (keyState[Keyboard_A]) {
+        int turn = map(min(getKeyDuration(Keyboard_A), 500UL), 0, 500, 0, 255);
         pwmLeft -= turn;
         pwmRight += turn;
     }
-
-    // D-Taste für Rechts
-    if (ctl->isKeyPressed(Keyboard_D)) {
-        unsigned long duration = updateKeyPressDuration(Keyboard_D);
-        int turn = map(min(duration, (unsigned long)1000), 0, 1000, 0, 255);
+    if (keyState[Keyboard_D]) {
+        int turn = map(min(getKeyDuration(Keyboard_D), 500UL), 0, 500, 0, 255);
         pwmLeft += turn;
         pwmRight -= turn;
     }
+    float deltaL = pwmLeft * 0.1;
+    // Prüfe und passe an, falls die Änderung kleiner als 1 oder -1 ist
+    if (deltaL > 0 && deltaL < 1) {
+        deltaL = 1;  // Minimale positive Anpassung
+    } else if (deltaL < 0 && deltaL > -1) {
+        deltaL = -1;  // Minimale negative Anpassung
+    }
+    float deltaR = pwmRight * 0.1;
+    // Prüfe und passe an, falls die Änderung kleiner als 1 oder -1 ist
+    if (deltaR > 0 && deltaR < 1) {
+        deltaR = 1;  // Minimale positive Anpassung
+    } else if (deltaR < 0 && deltaR > -1) {
+        deltaR = -1;  // Minimale negative Anpassung
+    }
+    // Glättung der Geschwindigkeitsänderungen
+    pwmLeft = oldLeftSpeed * 0.9 + deltaL;
+    pwmRight = oldRightSpeed * 0.9 + deltaR;
 
-    setSpeed(constrain(pwmLeft, -255, 255), constrain(pwmRight, -255, 255));
+    // Speichere die aktuellen Geschwindigkeiten für den nächsten Durchlauf
+    oldLeftSpeed = pwmLeft;
+    oldRightSpeed = pwmRight;
 
-    // Debug-Ausgabe
+    // Geschwindigkeiten begrenzen, um Überlauf zu vermeiden
+    pwmLeft = constrain(pwmLeft, -255, 255);
+    pwmRight = constrain(pwmRight, -255, 255);
+
+    setSpeed(pwmLeft, pwmRight);
+
     Serial.print("Setze Geschwindigkeit: Links = ");
     Serial.print(pwmLeft);
     Serial.print(", Rechts = ");
     Serial.println(pwmRight);
 }
 
+void onKeyPressEvent(int key, bool isPressed) {
+    updateKeyPressDuration(key, isPressed);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -105,19 +162,49 @@ void setup() {
     }
 
     // Aktiviere die Whitelist-Überprüfung
-    uni_bt_allowlist_set_enabled(true);
+    uni_bt_allowlist_set_enabled(false);
 	
     BP32.setup(onConnectedController, onDisconnectedController);
 }
 
 void loop() {
     if (BP32.update()) {
+        // Eventuell eingehende Tastaturereignisse verarbeiten
         for (auto controller : myControllers) {
             if (controller && controller->isConnected() && controller->isKeyboard()) {
-                processKeyboard(controller);
+                // Beispielsweise könnten Tastaturereignisse so verarbeitet werden:
+                if (controller->isKeyPressed(Keyboard_W)) {
+                    onKeyPressEvent(Keyboard_W, true);
+                } else {
+                    onKeyPressEvent(Keyboard_W, false);
+                }
+
+                // S-Taste für Rückwärts
+                if (controller->isKeyPressed(Keyboard_S)) {
+                    onKeyPressEvent(Keyboard_S, true);
+                } else {
+                    onKeyPressEvent(Keyboard_S, false);
+                }
+
+                // A-Taste für Links
+                if (controller->isKeyPressed(Keyboard_A)) {
+                    onKeyPressEvent(Keyboard_A, true);
+                } else {
+                    onKeyPressEvent(Keyboard_A, false);
+                }
+
+                // D-Taste für Rechts
+                if (controller->isKeyPressed(Keyboard_D)) {
+                    onKeyPressEvent(Keyboard_D, true);
+                } else {
+                    onKeyPressEvent(Keyboard_D, false);
+                }
             }
         }
     }
+
+    // Verarbeite die aktuellen Tastenzustände, um die Geschwindigkeit zu aktualisieren
+    processKeyboard();
     delay(10);  // Kurze Pause zur Schonung der CPU
 }
 ```

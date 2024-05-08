@@ -4,10 +4,13 @@ Um den Roboter mithilfe eines Controllers zu steuern müssen wir den Code so auf
 #include <Arduino.h>
 #include <Bluepad32.h>
 #include <uni.h>
+// Flags für die Achseninvertierung
+#define INVERT_RIGHT_Y 1// 1 = true
+#define INVERT_RIGHT_X 0// 1 = true
 
 
 // Definiere hier die MAC-Adressen der erlaubten Controller
-const char* allowedAddresses[] = {"98:B6:E9:01:6C:47", "AA:BB:CC:DD:EE:FF"};
+const char* allowedAddresses[] = {"98:B6:E9:01:6C:47", "98:B6:E9:01:66:C9"};
 const int numAllowed = sizeof(allowedAddresses) / sizeof(allowedAddresses[0]);
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
@@ -59,13 +62,33 @@ void setSpeed(int leftPWM, int rightPWM) {
 }
 
 void processGamepad(ControllerPtr ctl) {
-    // Lies die Werte der rechten Achse aus
     int rightX = ctl->axisRX();
     int rightY = ctl->axisRY();
 
-    // Skaliere die Achsenwerte auf PWM-Werte
-    int leftPWM = map(rightY + rightX, -1024, 1024, -255, 255);
-    int rightPWM = map(rightY - rightX, -1024, 1024, -255, 255);
+    // Achsen invertieren, falls erforderlich
+    if (INVERT_RIGHT_Y) {
+        rightY = -rightY;
+    }
+    if (INVERT_RIGHT_X) {
+        rightX = -rightX;
+    }
+
+    //Serial.print("Achsenwerte: X = ");
+    //Serial.print(rightX);
+    //Serial.print(", Y = ");
+    //Serial.println(rightY);
+
+    // Normalisiere die Eingabe von -512 bis 512 auf -255 bis 255
+    int normX = map(rightX, -512, 512, -255, 255);
+    int normY = map(rightY, -512, 512, -255, 255);
+
+    // Berechne PWM-Werte für linken und rechten Motor
+    int leftPWM = normY + normX;
+    int rightPWM = normY - normX;
+
+    // Begrenze die PWM-Werte, um Überlauf zu verhindern
+    leftPWM = constrain(leftPWM, -255, 255);
+    rightPWM = constrain(rightPWM, -255, 255);
 
     // Setze die Geschwindigkeit des Roboters
     setSpeed(leftPWM, rightPWM);
@@ -109,7 +132,6 @@ void loop() {
 
     delay(10);  // Kurze Pause zur Schonung der CPU
 }
-
 ```
 
 ### Erklärung:
